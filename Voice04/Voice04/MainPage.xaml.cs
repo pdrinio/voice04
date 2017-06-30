@@ -1,4 +1,15 @@
-﻿using System;
+﻿using System.Threading.Tasks;
+using Windows.Storage;
+using Windows.Media.SpeechRecognition;
+using Windows.UI.Core;
+using Windows.ApplicationModel;
+using Windows.ApplicationModel.Resources.Core;
+using Windows.Globalization;
+using Windows.Media.SpeechSynthesis;
+using System.Diagnostics;
+using System.Text;
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
