@@ -33,9 +33,57 @@ namespace Voice04
     /// </summary>
     public sealed partial class MainPage : Page
     {
+        //mis objetillos
+        private SpeechRecognizer speechRecognizer;
+        private SpeechRecognizer speechRecognizerNotas;
+        private IAsyncOperation<SpeechRecognitionResult> recognitionOperation;
+        private CoreDispatcher dispatcher;
+        private SpeechSynthesizer synthesizer;
+        private SpeechRecognitionResult speechRecognitionResult;       
+        private enum Estado { Parado, ReconociendoContinuamente, TomandoNota };        
+        private Estado miEstado;
+        private Estado nextStep;
+
+        private StringBuilder szTextoDictado; //el texto que recoges
+
         public MainPage()
         {
             this.InitializeComponent();
+        }
+
+        protected async override void OnNavigatedTo(NavigationEventArgs e) //cuando llegas
+        {
+            miEstado = Estado.Parado; //iniciamos parados
+            nextStep = Estado.Parado;
+
+            dispatcher = CoreWindow.GetForCurrentThread().Dispatcher;
+
+            //comprobación de si tengo permiso sobre el micrófono; si tengo, inicio el proceso (InitializeRecognizer)
+            bool tengoPermiso = await AudioCapturePermissions.RequestMicrophonePermission();
+            if (tengoPermiso)
+            {
+                // lanza el habla 
+                inicializaHabla();
+
+                //escoge castellano (válido para todos los reconocedores)
+                Language speechLanguage = SpeechRecognizer.SystemSpeechLanguage;
+
+                // inicializo los dos reconocedores (el de gramática compilada, y el contínuo de las notas)                
+                await InitializeRecognizer(speechLanguage);
+                await InitializeTomaNota(speechLanguage);
+
+                //da la bienvenida
+
+
+                //// y lanza EL TOMA NOTA, para saber cuándo me hace la llamada
+                TomaNota();
+
+            }
+            else
+            {
+                tbEstadoReconocimiento.Visibility = Visibility.Visible;
+                tbEstadoReconocimiento.Text = "Sin acceso al micrófono";
+            }
         }
     }
 }

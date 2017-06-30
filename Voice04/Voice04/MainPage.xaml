@@ -15,12 +15,12 @@
             </Grid.RowDefinitions>
 
         <StackPanel Grid.Column="1" Margin="40,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="Estado" Foreground="White" FontSize="25" Text="Inicializando..."/>
-            <TextBlock x:Name="SiguientePaso" Foreground="White" FontSize="25" Text="Siguiente paso..."/>
+            <TextBlock x:Name="txbEstado" Foreground="White" FontSize="25" Text="Inicializando..."/>
+            <TextBlock x:Name="txbSiguientePaso" Foreground="White" FontSize="25" Text="Siguiente paso..."/>
         </StackPanel>
 
         <StackPanel Grid.Row="3" Margin="40,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="Texto" Foreground="White" FontSize="25" Text="Texto escuchado...."/>
+            <TextBlock x:Name="txbTextoReconocido" Foreground="White" FontSize="25" Text="Texto escuchado...."/>
 
         </StackPanel>
 
