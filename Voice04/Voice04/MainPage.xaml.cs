@@ -23,6 +23,7 @@ using Windows.UI.Xaml.Data;
 using Windows.UI.Xaml.Input;
 using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
+using voice04;
 
 // La plantilla de elemento Página en blanco está documentada en http://go.microsoft.com/fwlink/?LinkId=402352&clcid=0x409
 
@@ -70,20 +71,321 @@ namespace Voice04
 
                 // inicializo los dos reconocedores (el de gramática compilada, y el contínuo de las notas)                
                 await InitializeRecognizer(speechLanguage);
-                await InitializeTomaNota(speechLanguage);
+             //   await InitializeTomaNota(speechLanguage);
 
                 //da la bienvenida
-
+                await dime("Bienvenido, dí: Atención, escucha; para comenzar a hablarme");
 
                 //// y lanza EL TOMA NOTA, para saber cuándo me hace la llamada
-                TomaNota();
+                // TomaNota();
+                reconocerContinuamente();
 
             }
             else
-            {
-                tbEstadoReconocimiento.Visibility = Visibility.Visible;
-                tbEstadoReconocimiento.Text = "Sin acceso al micrófono";
+            {                
+                txbEstado.Text = "Sin acceso al micrófono";
             }
         }
+
+        #region GestionDelHabla
+
+        private void inicializaHabla()
+        {
+            //lanza el habla
+            synthesizer = new SpeechSynthesizer();
+
+            VoiceInformation voiceInfo =
+         (
+           from voice in SpeechSynthesizer.AllVoices
+           where voice.Gender == VoiceGender.Female
+           select voice
+         ).FirstOrDefault() ?? SpeechSynthesizer.DefaultVoice;
+
+            synthesizer.Voice = voiceInfo;
+        }
+
+        private async Task dime(String szTexto)
+        {
+            try
+            {
+                // crear el flujo desde el texto
+                SpeechSynthesisStream synthesisStream = await synthesizer.SynthesizeTextToStreamAsync(szTexto);
+
+                // ...y lo dice
+                media.AutoPlay = true;
+                media.SetSource(synthesisStream, synthesisStream.ContentType);
+                media.Play();
+            }
+            catch (Exception e)
+            {
+                var msg = new Windows.UI.Popups.MessageDialog(e.Message, "Error hablando:");
+                await msg.ShowAsync();
+            }
+        }
+        #endregion
+
+
+        #region ReconocimientoContinuo
+        private async Task InitializeRecognizer(Language recognizerLanguage)
+        {   //inicialiación del reconocedor 
+            if (speechRecognizer != null)
+            {
+                speechRecognizer.StateChanged -= SpeechRecognizer_StateChanged;
+
+                this.speechRecognizer.Dispose();
+                this.speechRecognizer = null;
+            }
+
+            try
+            {
+                //cargar el fichero de la gramática
+                string fileName = String.Format("SRGS\\SRGSComandos.xml");
+                StorageFile grammaContentFile = await Package.Current.InstalledLocation.GetFileAsync(fileName);
+
+                //inicializamos el objeto reconocedor           
+                speechRecognizer = new SpeechRecognizer(recognizerLanguage);
+
+                //activa el feedback al usuario
+                speechRecognizer.StateChanged += SpeechRecognizer_StateChanged;
+
+                //compilamos la gramática
+                SpeechRecognitionGrammarFileConstraint grammarConstraint = new SpeechRecognitionGrammarFileConstraint(grammaContentFile);
+                speechRecognizer.Constraints.Add(grammarConstraint);
+                SpeechRecognitionCompilationResult compilationResult = await speechRecognizer.CompileConstraintsAsync();
+
+                //si no hubo éxito...
+                if (compilationResult.Status != SpeechRecognitionResultStatus.Success)
+                {                   
+                    txbEstado.Text = "Error compilando la gramática";
+                }
+                else
+                {
+                    //si hubo éxito 
+                    //  tbEstadoReconocimiento.Visibility = Visibility.Visible;
+                    //                    tbEstadoReconocimiento.Text = "Gramática compilada, reconociendo";                   
+                    //me casca cada vez que vuelvo de tomar nota
+                    txbEstado.Text = "Gramática compilada";
+                    speechRecognizer.Timeouts.EndSilenceTimeout = TimeSpan.FromSeconds(1.2);//damos tiempo a hablar
+
+                }
+            }
+            catch (Exception e)
+            {
+                var messageDialog = new Windows.UI.Popups.MessageDialog(e.Message, "Excepción inicializando el  reconocimiento");
+                await messageDialog.ShowAsync();
+            }
+
+        }
+
+        public async void reconocerContinuamente()
+        {
+            try
+            {
+                //estado
+                miEstado = Estado.ReconociendoContinuamente;
+                nextStep = Estado.ReconociendoContinuamente;
+
+                recognitionOperation = speechRecognizer.RecognizeAsync(); //y utilizamos éste, que no muestra el pop-up
+                limpiaFormulario();
+
+                speechRecognitionResult = await recognitionOperation;
+
+                if (speechRecognitionResult.RawConfidence < 0.5 && speechRecognitionResult.Text != "") //si no ha entendido, pero ha escuchado algo
+                {
+                    await dime("Creo que no te he entendido");
+                    reconocerContinuamente();
+                }
+
+                else
+
+                if (speechRecognitionResult.Status == SpeechRecognitionResultStatus.Success) //si por el contrario hay match entre gramática y lo escuchado
+                {
+                    await interpretaResultado(speechRecognitionResult);
+
+                }
+                else //si no ha escuchado nada
+                {                   
+                    txbEstado.Text = string.Format("Error de reconocimiento; estado: {0}", speechRecognitionResult.Status.ToString());
+                }
+            }
+
+            catch (TaskCanceledException ex)
+            {
+                System.Diagnostics.Debug.WriteLine("Me cerraron en el medio del reconocimiento");
+                System.Diagnostics.Debug.WriteLine(ex.ToString());
+            }
+            catch (Exception ex2)
+            {
+                var msg = new Windows.UI.Popups.MessageDialog(ex2.Message, "Error genérico");
+                await msg.ShowAsync();
+            }
+        }
+
+        public async void ParaDeReconocerContinuamente()
+        {
+            try
+            {
+                if (speechRecognizer != null)
+                {
+                    if (speechRecognizer.State != SpeechRecognizerState.Idle)
+                    {
+                        if (recognitionOperation != null)
+                        {
+                            recognitionOperation.Cancel();
+                            recognitionOperation = null;
+                          
+                            nextStep = Estado.Parado;
+                            txbEstado.Text = "Reconocimiento continuo parado";
+                        }
+                    }
+                    else
+                    {
+                        //ParaDeReconocerContinuamente(); //lo intento hasta que salga del estado idle TIENE PINTA DE ESTAR MAL
+                    }
+
+                    speechRecognizer.StateChanged -= SpeechRecognizer_StateChanged;
+
+                    this.speechRecognizer.Dispose();
+                    this.speechRecognizer = null;
+                }
+            }
+            catch (Exception)
+            {
+                await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    txbEstado.Text = "Problema deteniendo el reconocimiento continuo: ";
+                });
+
+            }
+        }
+
+        private async void SpeechRecognizer_StateChanged(SpeechRecognizer sender, SpeechRecognizerStateChangedEventArgs args)
+        {//feedback al usuario del estado del reconocimiento de texto
+            await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                txbEstado.Text = "Estado: " + args.State.ToString();
+                txbConsola.Text += args.State.ToString() + Environment.NewLine;
+            });
+
+            if (args.State == SpeechRecognizerState.SoundEnded)
+            {
+               // txbConsola.Text = args.State.ToString();  TODO: me casca
+            }
+        }
+
+        private async Task interpretaResultado(SpeechRecognitionResult recoResult)
+        {
+            
+            if (recoResult.Text.ToString() != "") //si reconoce algo con texto, sea cual sea
+            {
+                if (recoResult.Status != SpeechRecognitionResultStatus.Success)
+                {
+                    await dime("Creo que no te he entendido bien");
+                }
+                else
+                {
+                    txbTextoReconocido.Text = recoResult.Text + " (" + recoResult.RawConfidence.ToString() + ")"; //presentamos el resultado y su  confianza
+                 
+                    //lo interpretamos
+                    if (recoResult.SemanticInterpretation.Properties.ContainsKey("consulta"))
+                    {
+                        txbConsola.Text = recoResult.SemanticInterpretation.Properties["consulta"][0].ToString();
+                        await dime(RespondeALaComunicacion(recoResult.SemanticInterpretation.Properties["consulta"][0].ToString()));
+
+                    }
+                }
+                if (recoResult.SemanticInterpretation.Properties.ContainsKey("orden"))
+                {
+                    txbConsola.Text = recoResult.SemanticInterpretation.Properties["orden"][0].ToString();
+                    await dime(RespondeALaComunicacion(recoResult.SemanticInterpretation.Properties["orden"][0].ToString()));
+                    if (recoResult.SemanticInterpretation.Properties["orden"][0].ToString() == "TOMANOTA")
+                    {
+                        nextStep = Estado.TomandoNota; //pidió tomar nota: el siguiente paso será tomar nota, pues (ver más abajo en qué repercute)
+                    }
+                }
+
+                // si pidió tomar nota, salimos de aquí; en caso contrario, anulamos el objeto de resultado para que no vuelva a entrar en el bucle, e invocamos el reconocimiento de nuevo
+                if (nextStep == Estado.ReconociendoContinuamente)
+                {
+                    recoResult = null;
+                    reconocerContinuamente();
+                }
+                else if (nextStep == Estado.TomandoNota)
+                {
+                    ParaDeReconocerContinuamente();
+                    //TomaNota();
+                } //salir de aquí
+            }
+            else
+            { //si no devuelve texto, probablemente hubiera un silencio; volvemos a invocar
+                reconocerContinuamente();
+            }
+
+        }
+
+        private string RespondeALaComunicacion(string szMensaje)
+        {
+            switch (szMensaje)
+            {
+                case "HORA":
+                    return DateTime.Now.ToString("h:mm");
+                case "DIA":
+                    return DateTime.Now.ToString("dd") + " de " + DateTime.Now.ToString("MMMM");
+                case "TOMANOTA":
+                    return "Vamos a tomar nota";
+                case "BULTO":
+                    return "Vamos a crear un bulto";
+                default:
+                    return "No sé gestionar tu mensaje";
+            }
+        }
+        #endregion
+
+
+        #region TomaNota
+        //private async Task InitializeTomaNota(Language recognizerLanguage)
+        //{
+        //    if (speechRecognizerNotas != null)
+        //    {
+        //        //si vengo de una ejecución anterior, hacemos limpieza
+        //        speechRecognizerNotas.StateChanged -= SpeechRecognizer_StateChanged;
+        //        speechRecognizerNotas.ContinuousRecognitionSession.Completed -= ContinuousRecognitionSession_Completed;
+        //        speechRecognizerNotas.ContinuousRecognitionSession.ResultGenerated -= ContinuousRecognitionSession_ResultGenerated;
+        //        speechRecognizerNotas.HypothesisGenerated -= SpeechRecognizer_HypothesisGenerated;
+
+        //        this.speechRecognizerNotas.Dispose();
+        //        this.speechRecognizerNotas = null;
+        //    }
+
+        //    this.speechRecognizerNotas = new SpeechRecognizer(recognizerLanguage);
+
+        //    speechRecognizerNotas.StateChanged += SpeechRecognizer_StateChanged; //feedback al usuario
+
+        //    // en vez de gramática, aplicamos el caso de uso "Dictado"
+        //    var dictationConstraint = new SpeechRecognitionTopicConstraint(SpeechRecognitionScenario.Dictation, "dictation");
+        //    speechRecognizerNotas.Constraints.Add(dictationConstraint);
+        //    SpeechRecognitionCompilationResult result = await speechRecognizerNotas.CompileConstraintsAsync();
+        //    if (result.Status != SpeechRecognitionResultStatus.Success)
+        //    {
+        //        var messageDialog = new Windows.UI.Popups.MessageDialog(result.Status.ToString(), "Excepción chunga: ");
+        //        await messageDialog.ShowAsync();
+        //    }
+
+        //    // nos registramos a los eventos
+        //    speechRecognizerNotas.ContinuousRecognitionSession.Completed += ContinuousRecognitionSession_Completed; //no hubo éxito
+        //    speechRecognizerNotas.ContinuousRecognitionSession.ResultGenerated += ContinuousRecognitionSession_ResultGenerated; //o entendió, o llegó basura
+        //    speechRecognizerNotas.HypothesisGenerated += SpeechRecognizer_HypothesisGenerated; //se va alimentando de lo que va llegando para dar feedback
+        //}
+        #endregion
+
+        #region ElementosVisuales
+        private void limpiaFormulario()
+        {
+            txbConsola.Text = "";
+            txbEstado.Text = "";
+            txbSiguientePaso.Text = "";
+            txbTextoReconocido.Text = "";
+        }
+        #endregion
     }
 }

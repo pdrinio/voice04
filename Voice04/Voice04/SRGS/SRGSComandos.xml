@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<grammar xml:lang="es-ES" root="inicio"
+tag-format="semantics/1.0" version="1.0"
+xmlns="http://www.w3.org/2001/06/grammar">
+
+
+  <rule id="inicio">
+    <one-of>
+      <item>
+        <ruleref uri="#queHoraEs"></ruleref>
+        <tag> out.consulta=rules.latest(); </tag>
+      </item>
+      <item>
+        <ruleref uri="#queDiaEsHoy"></ruleref>
+        <tag> out.consulta=rules.latest(); </tag>
+      </item>
+      <item>
+        <ruleref uri="#tomaNota"></ruleref>
+        <tag>out.orden = rules.latest();</tag>
+      </item>
+          <item>
+        <ruleref uri="#creaBulto"></ruleref>
+        <tag>out.consulta=rules.latest();</tag>
+      </item>
+    </one-of>
+  </rule>
+
+  <rule id="queHoraEs">
+    <one-of>
+      <item>
+        <tag> out="HORA"; </tag>
+        <one-of>
+          <item>¿Qué hora es?</item>
+          <item>¿En qué hora estamos?</item>
+          <item>¿Me dices la hora?</item>
+          <item>¿Me dices qué hora es?</item>
+        </one-of>
+      </item>
+    </one-of>
+  </rule>
+
+  <rule id="queDiaEsHoy">
+    <one-of>
+      <item>
+        <tag> out="DIA"; </tag>
+        <one-of>
+          <item>¿Qué día es?</item>
+          <item>¿Qué día es hoy?</item>
+          <item>¿En qué día estamos?</item>
+          <item>¿Me dices qué día es?</item>
+        </one-of>
+      </item>
+    </one-of>
+  </rule>
+  
+  <rule id="tomaNota">
+    <one-of>
+      <item>
+        <tag> out="TOMANOTA"; </tag>
+        <one-of>
+          <item>Toma nota</item>
+          <item>Anota</item>
+          <item>Nota nueva</item>
+          <item>Crear nueva nota</item>
+          <item>Crear nota nueva</item>
+        </one-of>
+      </item>
+    </one-of>
+  </rule>
+
+  <rule id="creaBulto">
+    <one-of>
+      <item>
+        <tag> out="BULTO"; </tag>
+        <one-of>
+          <item>Crear bulto</item>          
+        </one-of>
+      </item>
+    </one-of>
+  </rule>
+</grammar>

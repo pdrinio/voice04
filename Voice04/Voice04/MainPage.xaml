@@ -11,17 +11,22 @@
               <Grid.RowDefinitions>
             <RowDefinition Height="2*"/>
             <RowDefinition Height="2*"/>
-               <RowDefinition Height="2*"/>
+            <RowDefinition Height="2*"/>
             </Grid.RowDefinitions>
 
-        <StackPanel Grid.Column="1" Margin="40,0,0,0" VerticalAlignment="Center">
+        <MediaElement x:Name="media" AutoPlay="False" />
+
+        <StackPanel Grid.Row="1" Margin="40,0,0,0" VerticalAlignment="Center">
             <TextBlock x:Name="txbEstado" Foreground="White" FontSize="25" Text="Inicializando..."/>
             <TextBlock x:Name="txbSiguientePaso" Foreground="White" FontSize="25" Text="Siguiente paso..."/>
         </StackPanel>
 
+        <StackPanel Grid.Row="2" Margin="40,0,0,0" VerticalAlignment="Center">
+            <TextBlock x:Name="txbConsola" Foreground="White" FontSize="25" Text="Texto escuchado...."/>
+        </StackPanel>
+
         <StackPanel Grid.Row="3" Margin="40,0,0,0" VerticalAlignment="Center">
             <TextBlock x:Name="txbTextoReconocido" Foreground="White" FontSize="25" Text="Texto escuchado...."/>
-
         </StackPanel>
 
     </Grid>

@@ -13,7 +13,7 @@ using System;
 using System.Threading.Tasks;
 using Windows.Media.Capture;
 
-namespace voice03
+namespace voice04
 {
     public class AudioCapturePermissions
     {
