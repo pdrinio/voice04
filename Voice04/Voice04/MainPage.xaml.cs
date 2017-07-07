@@ -74,7 +74,7 @@ namespace Voice04
                 await InitializeTomaNota(speechLanguage);
 
                 //da la bienvenida (por ahora, no)
-                await dime("Bienvenido, dí: Atención, escucha; para comenzar a hablarme");
+                //await dime("Bienvenido, dí: Atención, escucha; para comenzar a hablarme");
 
                 //// y lanza el reconocimiento
                 reconocerContinuamente();
