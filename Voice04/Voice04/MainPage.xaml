@@ -23,6 +23,7 @@
 
         <StackPanel Grid.Row="1" Margin="40,0,0,0" VerticalAlignment="Center">
             <TextBlock x:Name="txbConsola" Foreground="White" FontSize="25" Text="Texto escuchado...."/>
+            <Button x:Name="btnArrancaRecoContinuo" Content="Lanza recon continuo" Foreground="White" FontSize="25" Click="BtnLanzaRecoContinuo"></Button>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Margin="40,0,0,0" VerticalAlignment="Center">

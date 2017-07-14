@@ -77,12 +77,12 @@ namespace Voice04
                 //await dime("Bienvenido, dí: Atención, escucha; para comenzar a hablarme");
 
                 //// y lanza el reconocimiento
-                reconocerContinuamente();
+                 reconocerContinuamente();
 
             }
             else
             {                
-                txbEstado.Text = "Sin acceso al micrófono";
+                MostrarTexto(txbEstado, "Sin acceso al micrófono");
             }
         }
 
@@ -111,9 +111,13 @@ namespace Voice04
                 SpeechSynthesisStream synthesisStream = await synthesizer.SynthesizeTextToStreamAsync(szTexto);
 
                 // ...y lo dice
-                media.AutoPlay = true;
-                media.SetSource(synthesisStream, synthesisStream.ContentType);
-                media.Play();
+                await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                {
+                    media.AutoPlay = true;
+                    media.SetSource(synthesisStream, synthesisStream.ContentType);
+                    media.Play();
+                });
+                
             }
             catch (Exception e)
             {
@@ -154,8 +158,8 @@ namespace Voice04
 
                 //si no hubo éxito...
                 if (compilationResult.Status != SpeechRecognitionResultStatus.Success)
-                {                   
-                    txbEstado.Text = "Error compilando la gramática";
+                {
+                    MostrarTexto(txbEstado, "Error compilando la gramática");
                 }
                 else
                 {
@@ -163,7 +167,7 @@ namespace Voice04
                     //  tbEstadoReconocimiento.Visibility = Visibility.Visible;
                     //                    tbEstadoReconocimiento.Text = "Gramática compilada, reconociendo";                   
                     //me casca cada vez que vuelvo de tomar nota
-                    txbEstado.Text = "Gramática compilada";
+                    MostrarTexto(txbEstado, "Gramática compilada");
                     speechRecognizer.Timeouts.EndSilenceTimeout = TimeSpan.FromSeconds(1.2);//damos tiempo a hablar
 
                 }
@@ -176,7 +180,7 @@ namespace Voice04
 
         }
 
-        public async void reconocerContinuamente()
+        public async Task reconocerContinuamente()
         {
             try
             {
@@ -185,7 +189,7 @@ namespace Voice04
                 nextStep = Estado.ReconociendoContinuamente;
 
                 recognitionOperation = speechRecognizer.RecognizeAsync(); //y utilizamos éste, que no muestra el pop-up
-                limpiaFormulario();
+                //limpiaFormulario();  TODO: CASCA aquí al volver de tomar nota
 
                 speechRecognitionResult = await recognitionOperation;
 
@@ -203,8 +207,8 @@ namespace Voice04
 
                 }
                 else //si no ha escuchado nada
-                {                   
-                    txbEstado.Text = string.Format("Error de reconocimiento; estado: {0}", speechRecognitionResult.Status.ToString());
+                {
+                    MostrarTexto(txbEstado, string.Format("Error de reconocimiento; estado: {0}", speechRecognitionResult.Status.ToString()));
                 }
             }
 
@@ -231,10 +235,12 @@ namespace Voice04
                         if (recognitionOperation != null)
                         {
                             recognitionOperation.Cancel();
+                            speechRecognitionResult = null;
+                            //TODO:  los dos siguientes es por si casca al volver de tomar nota
                             recognitionOperation = null;
-                          
-                            nextStep = Estado.Parado;
-                            txbEstado.Text = "Reconocimiento continuo parado";
+                            speechRecognitionResult = null;
+                              nextStep = Estado.Parado;
+                            MostrarTexto(txbEstado, "Reconocimiento continuo parado");
                         }
                     }
                     else
@@ -252,7 +258,7 @@ namespace Voice04
             {
                 await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
-                    txbEstado.Text = "Problema deteniendo el reconocimiento continuo: ";
+                    MostrarTexto(txbEstado, "Problema deteniendo el reconocimiento continuo: ");
                 });
 
             }
@@ -262,7 +268,7 @@ namespace Voice04
         {//feedback al usuario del estado del reconocimiento de texto
             await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
-                txbEstado.Text = "Estado: " + args.State.ToString();
+                MostrarTexto(txbEstado, "Estado: " + args.State.ToString());
                 txbConsola.Text += args.State.ToString() + Environment.NewLine;
             });
 
@@ -283,19 +289,19 @@ namespace Voice04
                 }
                 else
                 {
-                    txbTextoReconocido.Text = recoResult.Text + " (" + recoResult.RawConfidence.ToString() + ")"; //presentamos el resultado y su  confianza
+                    MostrarTexto(txbTextoReconocido, recoResult.Text + " (" + recoResult.RawConfidence.ToString() + ")"); //presentamos el resultado y su  confianza
                  
                     //lo interpretamos
                     if (recoResult.SemanticInterpretation.Properties.ContainsKey("consulta"))
                     {
-                        txbConsola.Text = recoResult.SemanticInterpretation.Properties["consulta"][0].ToString();
+                        MostrarTexto(txbConsola, recoResult.SemanticInterpretation.Properties["consulta"][0].ToString());
                         await dime(RespondeALaComunicacion(recoResult.SemanticInterpretation.Properties["consulta"][0].ToString()));
 
                     }
                 }
                 if (recoResult.SemanticInterpretation.Properties.ContainsKey("orden"))
                 {
-                    txbConsola.Text = recoResult.SemanticInterpretation.Properties["orden"][0].ToString();
+                    MostrarTexto(txbConsola, recoResult.SemanticInterpretation.Properties["orden"][0].ToString());
                     await dime(RespondeALaComunicacion(recoResult.SemanticInterpretation.Properties["orden"][0].ToString()));
                     if (recoResult.SemanticInterpretation.Properties["orden"][0].ToString() == "TOMANOTA")
                     {
@@ -310,7 +316,8 @@ namespace Voice04
                     reconocerContinuamente();
                 }
                 else if (nextStep == Estado.TomandoNota)
-                {                    
+                {     
+                    
                     TomaNota();
                 } //salir de aquí
             }
@@ -337,6 +344,15 @@ namespace Voice04
                     return "No sé gestionar tu mensaje";
             }
         }
+
+        private async void BtnLanzaRecoContinuo(object sender, RoutedEventArgs e)
+        {
+            //inicializamos, y lanzamos el reconocimiento
+            Language speechLanguage = SpeechRecognizer.SystemSpeechLanguage;
+            await InitializeRecognizer(speechLanguage);
+            reconocerContinuamente();
+        }
+
         #endregion
 
 
@@ -375,7 +391,7 @@ namespace Voice04
             speechRecognizerNotas.HypothesisGenerated += SpeechRecognizer_HypothesisGenerated; //se va alimentando de lo que va llegando para dar feedback
         }
 
-        private async void TomaNota()
+        private async Task TomaNota()
         {           
             if (miEstado != Estado.TomandoNota)
             {
@@ -414,7 +430,7 @@ namespace Voice04
                             await speechRecognizerNotas.ContinuousRecognitionSession.StopAsync();
 
                             // mostramos lo último entendido
-                            this.txbTextoReconocido.Text = szTextoDictado.ToString();
+                            MostrarTexto(this.txbTextoReconocido, szTextoDictado.ToString());
                         }
                         catch (Exception exception)
                         {
@@ -427,7 +443,7 @@ namespace Voice04
             }
         }
 
-        private async void ParaTomaNota()
+        private async Task ParaTomaNota()
         {
             if (this.speechRecognizerNotas != null)
             {
@@ -451,7 +467,7 @@ namespace Voice04
                     this.speechRecognizerNotas = null;
 
                    nextStep = Estado.Parado;
-                   txbEstado.Text = "Captura de nota parada";
+                   //txbEstado.Text = "Captura de nota parada"; parece que casca aqui
 
                     /////////////////////////////////////////////////////////////////////////////////////////////
                     /* No ejecutamos por ahora este código, hasta saber si va a funcionar bien o no; lo dejamos
@@ -479,7 +495,7 @@ namespace Voice04
                 {
                     await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     {
-                        txbEstado.Text = "Te has pasado de tiempo. Paso a reconocimiento libre";
+                        MostrarTexto(txbEstado, "Te has pasado de tiempo. Paso a reconocimiento libre");
                         miEstado = Estado.Parado;
                     });
                 }
@@ -487,7 +503,7 @@ namespace Voice04
                 {
                     await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     {
-                        txbEstado.Text = "Tomando nota: reconocimiento exitoso";
+                        MostrarTexto(txbEstado, "Tomando nota: reconocimiento exitoso");
                         txbConsola.Text = args.Status.ToString();
                         miEstado = Estado.TomandoNota;
                     });
@@ -505,7 +521,7 @@ namespace Voice04
 
                 await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
-                    txbTextoReconocido.Text = szTextoDictado.ToString();
+                     txbTextoReconocido.Text = szTextoDictado.ToString();
                 });
 
 
@@ -515,8 +531,8 @@ namespace Voice04
                     miEstado = Estado.ReconociendoContinuamente;
                     nextStep = Estado.ReconociendoContinuamente;
     
-                    ParaTomaNota();
-                    reconocerContinuamente();
+                    await ParaTomaNota();
+                   await reconocerContinuamente(); 
                 }
             }
             else
@@ -536,13 +552,13 @@ namespace Voice04
             }
         }
 
-        private async void SpeechRecognizer_HypothesisGenerated(SpeechRecognizer sender, SpeechRecognitionHypothesisGeneratedEventArgs args)
+        private void SpeechRecognizer_HypothesisGenerated(SpeechRecognizer sender, SpeechRecognitionHypothesisGeneratedEventArgs args)
         {//según va entendiendo, ir mostrando la información en la UI
             string hypothesis = args.Hypothesis.Text;
 
             // Update the textbox with the currently confirmed text, and the hypothesis combined.
-            string textboxContent = szTextoDictado.ToString() + " " + hypothesis + " ...";
-            await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            string textboxContent = szTextoDictado.ToString() + " " + hypothesis + " ...";            
+            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
                 txbTextoReconocido.Text = textboxContent;
             });
@@ -550,12 +566,20 @@ namespace Voice04
         #endregion
 
         #region ElementosVisuales
+        private void MostrarTexto (TextBlock txbAActualizar, string TextoAMostrar)
+        {
+            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+            {
+                txbAActualizar.Text = TextoAMostrar;
+            });
+        }
+
         private void limpiaFormulario()
         {
-            txbConsola.Text = "";
-            txbEstado.Text = "";
-            txbSiguientePaso.Text = "";
-            txbTextoReconocido.Text = "";
+            MostrarTexto(this.txbConsola, "");
+            MostrarTexto(this.txbEstado, "");
+            MostrarTexto(this.txbSiguientePaso, "");
+            MostrarTexto(this.txbTextoReconocido, "");             
         }
         #endregion
     }
