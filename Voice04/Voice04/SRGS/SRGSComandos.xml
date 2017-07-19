@@ -23,6 +23,18 @@ xmlns="http://www.w3.org/2001/06/grammar">
         <ruleref uri="#creaBulto"></ruleref>
         <tag>out.consulta=rules.latest();</tag>
       </item>
+      <item>
+        <ruleref uri="#hola"></ruleref>
+        <tag> out.consulta=rules.latest(); </tag>
+      </item>
+      <item>
+        <ruleref uri="#nombre"></ruleref>
+        <tag> out.consulta=rules.latest(); </tag>
+      </item>
+      <item>
+        <ruleref uri="#estado"></ruleref>
+        <tag> out.consulta=rules.latest(); </tag>
+      </item>
     </one-of>
   </rule>
 
@@ -75,6 +87,44 @@ xmlns="http://www.w3.org/2001/06/grammar">
         <tag> out="BULTO"; </tag>
         <one-of>
           <item>Crear bulto</item>          
+        </one-of>
+      </item>
+    </one-of>
+  </rule>
+
+  <rule id="hola">
+    <one-of>
+      <item>
+        <tag> out="HOLA"; </tag>
+        <one-of>
+          <item>Hola</item>
+          <item>Hola, Raspi</item>
+        </one-of>
+      </item>
+    </one-of>
+  </rule>
+
+  <rule id="nombre">
+    <one-of>
+      <item>
+        <tag> out="NOMBRE"; </tag>
+        <one-of>
+          <item>¿Cómo te llamas?</item>
+          <item>¿Cuál es tu nombre?</item>
+        </one-of>
+      </item>
+    </one-of>
+  </rule>
+  
+  <rule id="estado">
+    <one-of>
+      <item>
+        <tag> out="ESTADO"; </tag>
+        <one-of>
+          <item>¿Cómo estás?</item>
+          <item>¿Cómo te encuentras?</item>
+          <item>¿Qué tal estás?</item>
+          <item>¿Cómo vas?</item>
         </one-of>
       </item>
     </one-of>

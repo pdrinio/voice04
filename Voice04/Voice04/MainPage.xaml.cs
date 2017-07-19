@@ -340,6 +340,12 @@ namespace Voice04
                     return "Vamos a tomar nota";
                 case "BULTO":
                     return "Vamos a crear un bulto";
+                case "HOLA":
+                    return "Hola, muy buenas!!";
+                case "NOMBRE":
+                    return "Me llamo Raspi, o al menos es lo que me dijeron";
+                case "ESTADO":
+                    return "Estoy bien, gracias por preguntar";
                 default:
                     return "No sé gestionar tu mensaje";
             }
