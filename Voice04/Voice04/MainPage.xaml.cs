@@ -196,7 +196,9 @@ namespace Voice04
                 if (speechRecognitionResult.RawConfidence < 0.5 && speechRecognitionResult.Text != "") //si no ha entendido, pero ha escuchado algo
                 {
                     await dime("Creo que no te he entendido");
-                    reconocerContinuamente();
+                    recognitionOperation = null;
+                    speechRecognitionResult = null;
+                   await reconocerContinuamente(); 
                 }
 
                 else
