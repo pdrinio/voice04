@@ -77,13 +77,14 @@ namespace Voice04
                 //await dime("Bienvenido, dí: Atención, escucha; para comenzar a hablarme");
 
                 //// y lanza el reconocimiento
-                 reconocerContinuamente();
+                 await reconocerContinuamente();
 
             }
             else
             {                
                 MostrarTexto(txbEstado, "Sin acceso al micrófono");
             }
+            await dime("Ha finalizado la conversación");
         }
 
         #region GestionDelHabla
@@ -196,9 +197,12 @@ namespace Voice04
                 if (speechRecognitionResult.RawConfidence < 0.5 && speechRecognitionResult.Text != "") //si no ha entendido, pero ha escuchado algo
                 {
                     await dime("Creo que no te he entendido");
-                    recognitionOperation = null;
-                    speechRecognitionResult = null;
-                   await reconocerContinuamente(); 
+
+                    ///* elimino objetos para que, cuando vuelva, no se tropiece con ellos*/
+                    //recognitionOperation = null;
+                    //speechRecognitionResult = null;
+
+                   await reconocerContinuamente(); //y vuelve a lanzarlo
                 }
 
                 else
@@ -252,8 +256,8 @@ namespace Voice04
 
                     speechRecognizer.StateChanged -= SpeechRecognizer_StateChanged;
 
-                    this.speechRecognizer.Dispose();
-                    this.speechRecognizer = null;
+                   // this.speechRecognizer.Dispose(); SI ME LOS CARGO, Y LUEGO NO LOS INICIALIZO...
+                    //this.speechRecognizer = null;
                 }
             }
             catch (Exception)
@@ -315,17 +319,18 @@ namespace Voice04
                 if (nextStep == Estado.ReconociendoContinuamente)
                 {
                     recoResult = null;
-                    reconocerContinuamente();
+                    await ParaTomaNota();
+                    await reconocerContinuamente();
                 }
                 else if (nextStep == Estado.TomandoNota)
-                {     
-                    
-                    TomaNota();
+                {
+                    ParaDeReconocerContinuamente();
+                    await TomaNota();
                 } //salir de aquí
             }
             else
             { //si no devuelve texto, probablemente hubiera un silencio; volvemos a invocar
-                reconocerContinuamente();
+                await reconocerContinuamente();
             }
 
         }
@@ -358,7 +363,7 @@ namespace Voice04
             //inicializamos, y lanzamos el reconocimiento
             Language speechLanguage = SpeechRecognizer.SystemSpeechLanguage;
             await InitializeRecognizer(speechLanguage);
-            reconocerContinuamente();
+            await reconocerContinuamente();
         }
 
         #endregion
@@ -475,19 +480,7 @@ namespace Voice04
                     this.speechRecognizerNotas = null;
 
                    nextStep = Estado.Parado;
-                   //txbEstado.Text = "Captura de nota parada"; parece que casca aqui
-
-                    /////////////////////////////////////////////////////////////////////////////////////////////
-                    /* No ejecutamos por ahora este código, hasta saber si va a funcionar bien o no; lo dejamos
-                     *  parado, para invocar con un nuevo botón
-                    //y volvemos a llamar al reconocimiento continuo, con su lenguaje, inicialización, ...
-                    //escoge castellano (válido para todos los reconocedores)
-                    Language speechLanguage = SpeechRecognizer.SystemSpeechLanguage;
-
-                    // inicializo los dos reconocedores (el de gramática compilada, y el contínuo de las notas)                
-                    await InitializeRecognizer(speechLanguage);
-                    reconocerContinuamente();
-                    */////////////////////////////////////////////////////////////////////////////////////////////
+   
                 }
 
             }
@@ -540,7 +533,16 @@ namespace Voice04
                     nextStep = Estado.ReconociendoContinuamente;
     
                     await ParaTomaNota();
-                   await reconocerContinuamente(); 
+
+
+                    ///* intento 31/julio */
+                    //Language speechLanguage = SpeechRecognizer.SystemSpeechLanguage;
+
+                    //// inicializo los dos reconocedores (el de gramática compilada, y el contínuo de las notas)                
+                    //await InitializeRecognizer(speechLanguage);
+                    ///* hasta aquí */
+
+                    await reconocerContinuamente(); 
                 }
             }
             else
@@ -566,7 +568,7 @@ namespace Voice04
 
             // Update the textbox with the currently confirmed text, and the hypothesis combined.
             string textboxContent = szTextoDictado.ToString() + " " + hypothesis + " ...";            
-            dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+             dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
             {
                 txbTextoReconocido.Text = textboxContent;
             });
