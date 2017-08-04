@@ -41,7 +41,7 @@ namespace Voice04
         private CoreDispatcher dispatcher;
         private SpeechSynthesizer synthesizer;
         private SpeechRecognitionResult speechRecognitionResult;       
-        private enum Estado { Parado, ReconociendoContinuamente, TomandoNota };        
+        private enum Estado { Parado, ReconociendoContinuamente, TomandoNota, Fin };        
         private Estado miEstado;
         private Estado nextStep;
 
@@ -73,16 +73,26 @@ namespace Voice04
                 await InitializeRecognizer(speechLanguage);
                 await InitializeTomaNota(speechLanguage);
 
-                //da la bienvenida (por ahora, no)
-                //await dime("Bienvenido, dí: Atención, escucha; para comenzar a hablarme");
-
                 //// y lanza el reconocimiento
-                 await reconocerContinuamente();
-
+                //await reconocerContinuamente(); YA NO LO HAGO, DESDE QUE CONTROLO EL ESTADO CON ControlEstado();
+                await ControlEstado();
             }
             else
             {                
                 MostrarTexto(txbEstado, "Sin acceso al micrófono");
+            }           
+        }
+
+
+        private async Task ControlEstado()
+        {
+         while(nextStep != Estado.Fin)
+            {
+                if (miEstado == Estado.Parado && nextStep == Estado.Parado)
+                    {
+                        nextStep = Estado.ReconociendoContinuamente;
+                        await reconocerContinuamente();
+                    }
             }
             await dime("Ha finalizado la conversación");
         }
@@ -185,9 +195,8 @@ namespace Voice04
         {
             try
             {
-                //estado
-                miEstado = Estado.ReconociendoContinuamente;
-                nextStep = Estado.ReconociendoContinuamente;
+                //actualizado el estado actual cuando llego (el futuro lo toco cuando decida lo que hacer)
+                miEstado = Estado.ReconociendoContinuamente;                
 
                 recognitionOperation = speechRecognizer.RecognizeAsync(); //y utilizamos éste, que no muestra el pop-up
                 //limpiaFormulario();  TODO: CASCA aquí al volver de tomar nota
@@ -202,7 +211,9 @@ namespace Voice04
                     //recognitionOperation = null;
                     //speechRecognitionResult = null;
 
-                   await reconocerContinuamente(); //y vuelve a lanzarlo
+                 //  await reconocerContinuamente(); //y vuelve a lanzarlo
+                    //CONTROL ESTADO: ahora lo hago con control estado
+
                 }
 
                 else
