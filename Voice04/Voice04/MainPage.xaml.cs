@@ -41,7 +41,7 @@ namespace Voice04
         private CoreDispatcher dispatcher;
         private SpeechSynthesizer synthesizer;
         private SpeechRecognitionResult speechRecognitionResult;       
-        private enum Estado { Parado, ReconociendoContinuamente, TomandoNota, Fin };        
+        private enum Estado { Parado, ReconociendoContinuamente, TomandoNota, Fin };
         private Estado miEstado;
         private Estado nextStep;
 
@@ -71,7 +71,7 @@ namespace Voice04
 
                 // inicializo los dos reconocedores (el de gramática compilada, y el contínuo de las notas)                
                 await InitializeRecognizer(speechLanguage);
-                await InitializeTomaNota(speechLanguage);
+                //await InitializeTomaNota(speechLanguage);
 
                 //// y lanza el reconocimiento
                 //await reconocerContinuamente(); YA NO LO HAGO, DESDE QUE CONTROLO EL ESTADO CON ControlEstado();
@@ -86,15 +86,35 @@ namespace Voice04
 
         private async Task ControlEstado()
         {
-         while(nextStep != Estado.Fin)
-            {
-                if (miEstado == Estado.Parado && nextStep == Estado.Parado)
+            while(nextStep != Estado.Fin)
+               {                
+                   if (miEstado == Estado.TomandoNota && nextStep == Estado.TomandoNota)
+                   { //para tomar nota, parece que tengo que salir del bucle; ya se invocará desde la toma de nota, para volver
+                        break;
+                   }
+                    else if (miEstado == Estado.Parado && nextStep == Estado.Parado) //funciona para estados: INICIAL, 
                     {
-                        nextStep = Estado.ReconociendoContinuamente;
+                        nextStep = Estado.ReconociendoContinuamente; //cuando voy a cambiar, modifico el nextStep
                         await reconocerContinuamente();
                     }
-            }
-            await dime("Ha finalizado la conversación");
+                    else if (miEstado == Estado.ReconociendoContinuamente && nextStep == Estado.ReconociendoContinuamente) //funciona para los estados: 'estaba reconociendo, pero no entendí lo que dijo',
+                    {
+                        await reconocerContinuamente();
+                    }
+                    else if (miEstado == Estado.ReconociendoContinuamente && nextStep == Estado.TomandoNota)
+                    {
+                        //se invoca cuando, reconociendo continuamente, el usuario invoca el 'Tomar Nota'
+                        await ParaDeReconocerContinuamente();
+                        Language speechLanguage = SpeechRecognizer.SystemSpeechLanguage;
+                        await InitializeTomaNota(speechLanguage);
+                        await TomaNota();
+                    }
+                    else if (miEstado == Estado.TomandoNota && nextStep == Estado.ReconociendoContinuamente)
+                    {//viene de tomar nota, y sale => va a reconocimiento continuo
+                        await ParaTomaNota();
+                        await reconocerContinuamente();
+                    }                                    
+            }                      
         }
 
         #region GestionDelHabla
@@ -211,8 +231,9 @@ namespace Voice04
                     //recognitionOperation = null;
                     //speechRecognitionResult = null;
 
-                 //  await reconocerContinuamente(); //y vuelve a lanzarlo
+                    //  await reconocerContinuamente(); //y vuelve a lanzarlo
                     //CONTROL ESTADO: ahora lo hago con control estado
+                    nextStep = Estado.ReconociendoContinuamente; 
 
                 }
 
@@ -241,44 +262,61 @@ namespace Voice04
             }
         }
 
-        public async void ParaDeReconocerContinuamente()
+        public async Task ParaDeReconocerContinuamente()
         {
-            try
+            if (speechRecognizer != null)
             {
-                if (speechRecognizer != null)
+                try
                 {
-                    if (speechRecognizer.State != SpeechRecognizerState.Idle)
-                    {
-                        if (recognitionOperation != null)
-                        {
-                            recognitionOperation.Cancel();
-                            speechRecognitionResult = null;
-                            //TODO:  los dos siguientes es por si casca al volver de tomar nota
-                            recognitionOperation = null;
-                            speechRecognitionResult = null;
-                              nextStep = Estado.Parado;
-                            MostrarTexto(txbEstado, "Reconocimiento continuo parado");
-                        }
-                    }
-                    else
-                    {
-                        //ParaDeReconocerContinuamente(); //lo intento hasta que salga del estado idle TIENE PINTA DE ESTAR MAL
-                    }
-
+                    await speechRecognizer.StopRecognitionAsync();
                     speechRecognizer.StateChanged -= SpeechRecognizer_StateChanged;
 
-                   // this.speechRecognizer.Dispose(); SI ME LOS CARGO, Y LUEGO NO LOS INICIALIZO...
-                    //this.speechRecognizer = null;
+                    this.speechRecognizer.Dispose();
+                    this.speechRecognizer = null;
                 }
-            }
-            catch (Exception)
+                catch (Exception)
+                {
+                    await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
+                    {
+                        MostrarTexto(txbEstado, "Problema deteniendo el reconocimiento continuo: ");
+                    });
+                }
+            } else
             {
                 await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                 {
                     MostrarTexto(txbEstado, "Problema deteniendo el reconocimiento continuo: ");
                 });
-
             }
+                
+            //try
+            //{
+            //    if (speechRecognizer != null)
+            //    {
+            //        if (speechRecognizer.State != SpeechRecognizerState.Idle)
+            //        {
+            //            if (recognitionOperation != null)
+            //            {
+            //                recognitionOperation.Cancel();
+            //                speechRecognitionResult = null;
+            //                //TODO:  los dos siguientes es por si casca al volver de tomar nota
+            //                recognitionOperation = null;
+            //                speechRecognitionResult = null;                              
+            //                MostrarTexto(txbEstado, "Reconocimiento continuo parado");
+            //            }
+            //        }
+            //        else
+            //        {
+            //            //ParaDeReconocerContinuamente(); //lo intento hasta que salga del estado idle TIENE PINTA DE ESTAR MAL
+            //        }
+
+            //        speechRecognizer.StateChanged -= SpeechRecognizer_StateChanged;
+
+            //       // this.speechRecognizer.Dispose(); SI ME LOS CARGO, Y LUEGO NO LOS INICIALIZO...
+            //        //this.speechRecognizer = null;
+            //    }
+            //}
+    
         }
 
         private async void SpeechRecognizer_StateChanged(SpeechRecognizer sender, SpeechRecognizerStateChangedEventArgs args)
@@ -302,7 +340,7 @@ namespace Voice04
             {
                 if (recoResult.Status != SpeechRecognitionResultStatus.Success)
                 {
-                    await dime("Creo que no te he entendido bien");
+                    await dime("Creo que no te he entendido bien"); //aquí nunca ha llegado; TODO: eliminar
                 }
                 else
                 {
@@ -326,22 +364,25 @@ namespace Voice04
                     }
                 }
 
-                // si pidió tomar nota, salimos de aquí; en caso contrario, anulamos el objeto de resultado para que no vuelva a entrar en el bucle, e invocamos el reconocimiento de nuevo
-                if (nextStep == Estado.ReconociendoContinuamente)
-                {
-                    recoResult = null;
-                    await ParaTomaNota();
-                    await reconocerContinuamente();
-                }
-                else if (nextStep == Estado.TomandoNota)
-                {
-                    ParaDeReconocerContinuamente();
-                    await TomaNota();
-                } //salir de aquí
+                //CONTROL ESTADO: nada que hacer de lo que viene a continuación, pq controlo con nextStep
+
+                //// si pidió tomar nota, salimos de aquí; en caso contrario, anulamos el objeto de resultado para que no vuelva a entrar en el bucle, e invocamos el reconocimiento de nuevo
+                //if (nextStep == Estado.ReconociendoContinuamente)
+                //{
+                //    recoResult = null;
+                //    await ParaTomaNota();
+                //    await reconocerContinuamente();
+                //}
+                //else if (nextStep == Estado.TomandoNota)
+                //{
+                //    ParaDeReconocerContinuamente();
+                //    await TomaNota();
+                //} //salir de aquí
             }
             else
             { //si no devuelve texto, probablemente hubiera un silencio; volvemos a invocar
-                await reconocerContinuamente();
+                //await reconocerContinuamente(); CONTROL ESTADO
+                nextStep = Estado.ReconociendoContinuamente;
             }
 
         }
@@ -416,55 +457,42 @@ namespace Voice04
         }
 
         private async Task TomaNota()
-        {           
-            if (miEstado != Estado.TomandoNota)
-            {
-                if (speechRecognizerNotas.State == SpeechRecognizerState.Idle)
-                {
+        {
+            miEstado = Estado.TomandoNota; //CONTROL ESTADO
 
+            if (speechRecognizerNotas.State == SpeechRecognizerState.Idle)
+                {
                     try
-                    {
+                    {                   
                         szTextoDictado = new StringBuilder();                    
-                        miEstado = Estado.TomandoNota;
-                        nextStep = Estado.TomandoNota;
                         await speechRecognizerNotas.ContinuousRecognitionSession.StartAsync();
                     }
                     catch (Exception ex)
                     {
-
                         var messageDialog = new Windows.UI.Popups.MessageDialog(ex.Message, "Exception");
                         await messageDialog.ShowAsync();
 
                         //cascó, paro
                         miEstado = Estado.Parado;
                         nextStep = Estado.Parado;
-
                     }
                 }
-                else
+            else
                 {
-                    miEstado = Estado.Parado;
-                    nextStep = Estado.Parado;
+                // hacemos stopAsync para dejar que acabe, ya que no está en reposo...
+                   try
+                       {
+                        await speechRecognizerNotas.ContinuousRecognitionSession.StopAsync();
 
-                    if (speechRecognizerNotas.State != SpeechRecognizerState.Idle)
-                    {
-                        // hacemos stopAsync para dejar que acabe, ya que no está en reposo...
-                        try
-                        {
-                            await speechRecognizerNotas.ContinuousRecognitionSession.StopAsync();
-
-                            // mostramos lo último entendido
-                            MostrarTexto(this.txbTextoReconocido, szTextoDictado.ToString());
-                        }
-                        catch (Exception exception)
+                        // mostramos lo último entendido
+                        MostrarTexto(this.txbTextoReconocido, szTextoDictado.ToString());
+                    }
+                    catch (Exception exception)
                         {
                             var messageDialog = new Windows.UI.Popups.MessageDialog(exception.Message, "Exception");
                             await messageDialog.ShowAsync();
-                        }
-                    }
-                }
-
-            }
+                        }                    
+                }      
         }
 
         private async Task ParaTomaNota()
@@ -490,10 +518,8 @@ namespace Voice04
                     this.speechRecognizerNotas.Dispose();
                     this.speechRecognizerNotas = null;
 
-                   nextStep = Estado.Parado;
-   
+                   nextStep = Estado.ReconociendoContinuamente;   
                 }
-
             }
 
         }
@@ -508,7 +534,7 @@ namespace Voice04
                     await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     {
                         MostrarTexto(txbEstado, "Te has pasado de tiempo. Paso a reconocimiento libre");
-                        miEstado = Estado.Parado;
+                        nextStep = Estado.ReconociendoContinuamente; //no parece que llegue nunca aquí
                     });
                 }
                 else
@@ -517,7 +543,7 @@ namespace Voice04
                     {
                         MostrarTexto(txbEstado, "Tomando nota: reconocimiento exitoso");
                         txbConsola.Text = args.Status.ToString();
-                        miEstado = Estado.TomandoNota;
+                        nextStep = Estado.ReconociendoContinuamente;
                     });
                 }
             }
@@ -539,21 +565,10 @@ namespace Voice04
 
                 if (szTextoDictado.ToString().Contains("Final nota"))
                 {
-
+                    await ParaTomaNota();
                     miEstado = Estado.ReconociendoContinuamente;
                     nextStep = Estado.ReconociendoContinuamente;
-    
-                    await ParaTomaNota();
-
-
-                    ///* intento 31/julio */
-                    //Language speechLanguage = SpeechRecognizer.SystemSpeechLanguage;
-
-                    //// inicializo los dos reconocedores (el de gramática compilada, y el contínuo de las notas)                
-                    //await InitializeRecognizer(speechLanguage);
-                    ///* hasta aquí */
-
-                    await reconocerContinuamente(); 
+                    await ControlEstado();
                 }
             }
             else
