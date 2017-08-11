@@ -193,7 +193,7 @@ namespace Voice04
                 }
                 else
                 {
-                    MostrarTexto(txbEstado, "Gramática compilada");
+                    //MostrarTexto(txbEstado, "Gramática compilada"); DEBUG: no hace falta ya
                     speechRecognizer.Timeouts.EndSilenceTimeout = TimeSpan.FromSeconds(1.2);//damos tiempo a hablar
 
                 }
@@ -278,8 +278,7 @@ namespace Voice04
         private async void SpeechRecognizer_StateChanged(SpeechRecognizer sender, SpeechRecognizerStateChangedEventArgs args)
         {//feedback al usuario del estado del reconocimiento de texto
             await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
-            {
-                MostrarTexto(txbEstado, "Estado: " + args.State.ToString());
+            {                
                 txbConsola.Text += args.State.ToString() + Environment.NewLine;
             });
 
@@ -471,7 +470,7 @@ namespace Voice04
                 {
                     await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     {
-                        MostrarTexto(txbEstado, "Te has pasado de tiempo. Paso a reconocimiento libre");
+                        MostrarTexto(txbConsola, "Te has pasado de tiempo. Paso a reconocimiento libre");
                         nextStep = Estado.ReconociendoContinuamente; //no parece que llegue nunca aquí
                     });
                 }
@@ -479,7 +478,7 @@ namespace Voice04
                 {
                     await dispatcher.RunAsync(CoreDispatcherPriority.Normal, () =>
                     {
-                        MostrarTexto(txbEstado, "Tomando nota: reconocimiento exitoso");
+                        MostrarTexto(txbConsola, "Tomando nota: reconocimiento exitoso");
                         txbConsola.Text = args.Status.ToString();
                         nextStep = Estado.ReconociendoContinuamente;
                     });
@@ -503,10 +502,36 @@ namespace Voice04
 
                 if (szTextoDictado.ToString().Contains("Final nota"))
                 {
+
+
+                    /* Intento de que casque menos...*/
+                    //var szTextoDictadoSinFinalNota = szTextoDictado.ToString().Replace("Final nota", "");
+
+                    //Task t = new Task(async () => await dime("He entendido lo siguiente:"));
+                    //t.Start();
+                    //t.Wait();
+
+                    //Task t2 = new Task(async () => ParaTomaNota());
+                    //t2.Start();
+                    //t2.Wait();
+
+                    //miEstado = Estado.ReconociendoContinuamente;
+                    //nextStep = Estado.ReconociendoContinuamente;
+
+                    //await ControlEstado();
+
+
+                    var szTextoDictadoSinFinalNota = szTextoDictado.ToString().Replace("Final nota", "");
+
                     await ParaTomaNota();
+
+                    await dime("He entendido lo siguiente: " + szTextoDictadoSinFinalNota);
+
                     miEstado = Estado.ReconociendoContinuamente;
                     nextStep = Estado.ReconociendoContinuamente;
+
                     await ControlEstado();
+                    
                 }
             }
             else

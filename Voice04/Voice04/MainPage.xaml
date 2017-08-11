@@ -22,7 +22,7 @@
         </StackPanel>
 
         <StackPanel Grid.Row="1" Margin="40,0,0,0" VerticalAlignment="Center">
-            <TextBlock x:Name="txbConsola" Foreground="White" FontSize="25" Text="Texto escuchado...."/>
+            <TextBlock x:Name="txbConsola" Foreground="White" FontSize="25" Text="Mensajes...."/>
         </StackPanel>
 
         <StackPanel Grid.Row="2" Margin="40,0,0,0" VerticalAlignment="Center">
