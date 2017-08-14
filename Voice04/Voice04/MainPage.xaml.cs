@@ -328,12 +328,12 @@ namespace Voice04
         {
             switch (szMensaje)
             {
-                case "HORA":
+                case "HORA":                    
                     return DateTime.Now.ToString("h:mm");
                 case "DIA":
-                    return DateTime.Now.ToString("dd") + " de " + DateTime.Now.ToString("MMMM");
+                    return Int32.Parse(DateTime.Now.ToString("dd")) + " de " + DateTime.Now.ToString("MMMM");
                 case "TOMANOTA":
-                    return "Vamos a tomar nota";
+                    return "Dí Final Nota para terminar";
                 case "BULTO":
                     return "Vamos a crear un bulto";
                 case "HOLA":
