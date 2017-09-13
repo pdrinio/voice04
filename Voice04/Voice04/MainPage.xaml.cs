@@ -24,18 +24,22 @@ using Windows.UI.Xaml.Controls;
 //using Windows.UI.Xaml.Media;
 using Windows.UI.Xaml.Navigation;
 using voice04;
-
+using uPLibrary.Networking.M2Mqtt.Messages;
 
 namespace Voice04
 {
     public sealed partial class MainPage : Page
     {
-        //mis objetillos
-        private SpeechRecognizer speechRecognizer;
-        private SpeechRecognizer speechRecognizerNotas;
+        // objetos mqtt (NUGET: Install-Package M2Mqtt -Version 4.3.0)
+        private mqtt MiMqtt;
+                
+        //mis objetillos de voz
+        private SpeechRecognizer speechRecognizer; //continuo
+        private SpeechRecognizer speechRecognizerNotas; //toma nota
+        private SpeechRecognizer speechRecognizerConversacion; //para conversación
         private IAsyncOperation<SpeechRecognitionResult> recognitionOperation;
         private CoreDispatcher dispatcher;
-        private SpeechSynthesizer synthesizer;
+        private SpeechSynthesizer synthesizer; //habla
         private SpeechRecognitionResult speechRecognitionResult;       
         private enum Estado { Parado, ReconociendoContinuamente, TomandoNota, Fin };
         private Estado miEstado;
@@ -50,6 +54,11 @@ namespace Voice04
 
         protected async override void OnNavigatedTo(NavigationEventArgs e) //cuando llegas
         {
+            // MQTT
+            MiMqtt = new mqtt();
+            MiMqtt.cliente.MqttMsgPublishReceived += cliente_MqttMsgPublishReceivedAsync; //registrarme al evento
+
+            // VOZ
             miEstado = Estado.Parado; //iniciamos parados
             nextStep = Estado.Parado;
 
@@ -115,6 +124,23 @@ namespace Voice04
                     }                                    
             }                      
         }
+
+
+        #region MQTT
+        public async void cliente_MqttMsgPublishReceivedAsync(object sender, MqttMsgPublishEventArgs e)
+        {
+            string texto = System.Text.Encoding.UTF8.GetString(e.Message);
+
+            if (texto == mqtt.TiposMensaje.movimiento.ToString())
+            {
+                MostrarTexto(this.txbConsola, texto);
+
+                if (miEstado != Estado.TomandoNota) {
+                    await dime("Hola!!!!");
+                }                
+            }
+        }
+        #endregion
 
         #region GestionDelHabla
 
