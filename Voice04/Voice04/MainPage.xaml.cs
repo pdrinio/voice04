@@ -30,10 +30,14 @@ namespace Voice04
 {
     public sealed partial class MainPage : Page
     {
+        //OBJETOS e INICALIZACIÓN:
         // objetos mqtt (NUGET: Install-Package M2Mqtt -Version 4.3.0)
         private mqtt MiMqtt;
+
+        // presencia
+        private Presencia miPresencia;
                 
-        //mis objetillos de voz
+        // mis objetillos de voz
         private SpeechRecognizer speechRecognizer; //continuo
         private SpeechRecognizer speechRecognizerNotas; //toma nota
         private SpeechRecognizer speechRecognizerConversacion; //para conversación
@@ -57,6 +61,9 @@ namespace Voice04
             // MQTT
             MiMqtt = new mqtt();
             MiMqtt.cliente.MqttMsgPublishReceived += cliente_MqttMsgPublishReceivedAsync; //registrarme al evento
+
+            // Presencia
+            miPresencia = new Presencia();
 
             // VOZ
             miEstado = Estado.Parado; //iniciamos parados
@@ -133,11 +140,16 @@ namespace Voice04
 
             if (texto == mqtt.TiposMensaje.movimiento.ToString())
             {
-                MostrarTexto(this.txbConsola, texto);
+                MostrarTexto(this.txbConsola, texto); //DEBUG
 
-                if (miEstado != Estado.TomandoNota) {
+                if (miPresencia.Esta == Presencia.Contenido.VACIO) //movimiento sin presencia autorizada
+                {
+                    await dime("Atención: entrada no autorizada");                                  
+                }
+                else
+                    if (miEstado != Estado.TomandoNota && miPresencia.Esta != Presencia.Contenido.VACIO ) {
                     await dime("Hola!!!!");
-                }                
+                    }                                    
             }
         }
         #endregion
