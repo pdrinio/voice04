@@ -8,20 +8,16 @@ namespace Voice04
 {
     class Presencia
     {
-        public enum Contenido
-        {
-            VACIO = 0,
-            M = 1,
-            F = 1,
-            FC = 3,
-            MC = 3,
-            ALL = 4 };
-
-        public Contenido Esta;        
+        public enum Habitantes { Pa, Ma, Cris, Pablo};
+        public List<Habitantes> Personas; 
+     
 
         public Presencia()
-        {
-            Esta = Contenido.ALL;
+        {           
+            Personas.Add(Habitantes.Pa);
+            Personas.Add(Habitantes.Ma);
+            Personas.Add(Habitantes.Cris);
+            Personas.Add(Habitantes.Pablo);
         }
     }
 }

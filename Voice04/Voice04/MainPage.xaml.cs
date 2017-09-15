@@ -142,12 +142,13 @@ namespace Voice04
             {
                 MostrarTexto(this.txbConsola, texto); //DEBUG
 
-                if (miPresencia.Esta == Presencia.Contenido.VACIO) //movimiento sin presencia autorizada
+                //if (miPresencia.Esta == Presencia.Contenido.VACIO) //movimiento sin presencia autorizada
+                if(miPresencia.Personas.Count == 0 )
                 {
                     await dime("Atención: entrada no autorizada");                                  
                 }
                 else
-                    if (miEstado != Estado.TomandoNota && miPresencia.Esta != Presencia.Contenido.VACIO ) {
+                    if (miEstado != Estado.TomandoNota && miPresencia.Personas.Count > 0) {
                     await dime("Hola!!!!");
                     }                                    
             }
